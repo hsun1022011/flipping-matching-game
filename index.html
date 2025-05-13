@@ -1,1 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matching Card Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    .score {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px;
+      width: 100%;
+      max-width: 600px;
+    }
+    .card {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background-color: #f0f0f0;
+      border: 2px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      text-align: center;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .hidden {
+      background-color: #ddd;
+      color: transparent;
+    }
+    .matched {
+      background-color: #a3d9a5;
+      cursor: default;
+    }
+    img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Matching Card Game</h1>
+  <div class="score" id="score">맞춘 카드: 0 / 10</div>
+  <div class="game-board" id="gameBoard"></div>
 
+  <script>
+    const allPairs = [
+      { word: "new born", image: "images/newborn.jpg" },
+      { word: "feather", image: "images/feather.jpg" },
+      { word: "fuzzy", image: "images/fuzzy.jpg" },
+      { word: "cozy", image: "images/cozy.jpg" },
+      { word: "slide", image: "images/slide.jpg" },
+      { word: "freeze", image: "images/freeze.jpg" },
+      { word: "take turns", image: "images/taketurns.jpg" },
+      { word: "remember", image: "images/remember.jpg" },
+      { word: "hatch", image: "images/hatch.jpg" },
+      { word: "chick", image: "images/chick.jpg" },
+      { word: "break", image: "images/break.jpg" },
+      { word: "fierce", image: "images/fierce.jpg" },
+      { word: "huddle", image: "images/huddle.jpg" },
+      { word: "howl", image: "images/howl.jpg" },
+      { word: "temperature", image: "images/temperature.jpg" },
+    ];
+
+    let firstCard = null;
+    let lockBoard = false;
+    let matchedPairs = 0;
+    let startTime = null;
+    let selectedPairs = [];
+    let cardData = [];
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function updateScore() {
+      document.getElementById("score").textContent = `맞춘 카드: ${matchedPairs} / ${cardData.length / 2}`;
+    }
+
+    function createBoard() {
+      const board = document.getElementById("gameBoard");
+      board.innerHTML = "";
+
+      shuffle(allPairs);
+      selectedPairs = allPairs.slice(0, 10);
+
+      cardData = [];
+      selectedPairs.forEach((pair, index) => {
+        const pairId = index + 1;
+        cardData.push(
+          { type: "word", content: pair.word, pairId },
+          { type: "image", content: pair.image, pairId }
+        );
+      });
+
+      shuffle(cardData);
+      startTime = Date.now();
+
+      cardData.forEach((data, index) => {
+        const card = document.createElement("div");
+        card.classList.add("card", "hidden");
+        card.dataset.index = index;
+        card.dataset.pairId = data.pairId;
+
+        if (data.type === "word") {
+          card.textContent = data.content;
+        } else if (data.type === "image") {
+          const img = document.createElement("img");
+          img.src = data.content;
+          img.alt = "";
+          card.appendChild(img);
+        }
+
+        card.addEventListener("click", () => handleCardClick(card));
+        board.appendChild(card);
+      });
+    }
+
+    function handleCardClick(card) {
+      if (lockBoard || card.classList.contains("matched") || !card.classList.contains("hidden")) return;
+
+      card.classList.remove("hidden");
+
+      if (!firstCard) {
+        firstCard = card;
+        return;
+      }
+
+      if (firstCard.dataset.pairId === card.dataset.pairId) {
+        firstCard.classList.add("matched");
+        card.classList.add("matched");
+        firstCard = null;
+        matchedPairs++;
+        updateScore();
+
+        if (matchedPairs === cardData.length / 2) {
+          const totalTime = Math.floor((Date.now() - startTime) / 1000);
+          setTimeout(() => {
+            alert(`성공! 걸린 시간은 ${totalTime}초! 멋진걸`);
+          }, 300);
+        }
+      } else {
+        lockBoard = true;
+        setTimeout(() => {
+          card.classList.add("hidden");
+          firstCard.classList.add("hidden");
+          firstCard = null;
+          lockBoard = false;
+        }, 1000);
+      }
+    }
+
+    createBoard();
+    updateScore();
+  </script>
+</body>
+</html>
