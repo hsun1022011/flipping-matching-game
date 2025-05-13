@@ -18,6 +18,10 @@
     }
     .score {
       font-size: 18px;
+      margin-bottom: 10px;
+    }
+    #timer {
+      font-size: 18px;
       margin-bottom: 20px;
     }
     .game-board {
@@ -28,40 +32,66 @@
       max-width: 600px;
     }
     .card {
+      perspective: 1000px;
+    }
+    .card-inner {
+      position: relative;
       width: 100%;
       aspect-ratio: 1 / 1;
-      background-color: #f0f0f0;
-      border: 2px solid #ccc;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .card.hidden .card-inner {
+      transform: rotateY(0deg);
+    }
+    .card:not(.hidden) .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      font-size: 16px;
-      text-align: center;
-      padding: 10px;
+      border: 2px solid #ccc;
+      background-color: #f0f0f0;
       box-sizing: border-box;
+      font-size: 16px;
+      padding: 10px;
+      text-align: center;
     }
-    .hidden {
+    .card-front {
+      transform: rotateY(180deg);
+    }
+    .card-back {
       background-color: #ddd;
-      color: transparent;
     }
-    .matched {
-      background-color: #a3d9a5;
-      cursor: default;
+    .card.matched {
+      pointer-events: none;
     }
     img {
       max-width: 100%;
       max-height: 100%;
-      display: none; /* 이미지는 기본적으로 숨깁니다. */
-    }
-    .card.hidden img {
-      display: block; /* 카드가 숨겨져 있을 때만 이미지를 숨깁니다. */
     }
   </style>
 </head>
 <body>
   <h1>Matching Card Game</h1>
-  <div class="score" id="score">맞춘 카드: 0 / 10</div>
+
+  <div style="margin-bottom: 10px;">
+    <label for="level">레벨 선택:</label>
+    <select id="level">
+      <option value="1">Level 1 (5단어, 45초)</option>
+      <option value="2" selected>Level 2 (10단어, 60초)</option>
+      <option value="3">Level 3 (15단어, 60초)</option>
+    </select>
+    <button onclick="startGame()">게임 시작</button>
+  </div>
+
+  <div class="score" id="score">맞춘 카드: 0 / 0</div>
+  <div id="timer">남은 시간: --초</div>
   <div class="game-board" id="gameBoard"></div>
 
   <script>
@@ -80,15 +110,16 @@
       { word: "fierce", image: "images/fierce.jpg" },
       { word: "huddle", image: "images/huddle.jpg" },
       { word: "howl", image: "images/howl.jpg" },
-      { word: "temperature", image: "images/temperature.jpg" },
+      { word: "temperature", image: "images/temperature.jpg" }
     ];
 
+    let cardData = [];
+    let matchedPairs = 0;
     let firstCard = null;
     let lockBoard = false;
-    let matchedPairs = 0;
+    let timerInterval = null;
     let startTime = null;
-    let selectedPairs = [];
-    let cardData = [];
+    let remainingTime = 60;
 
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
@@ -97,19 +128,30 @@
       }
     }
 
-    function updateScore() {
-      document.getElementById("score").textContent = `맞춘 카드: ${matchedPairs} / ${cardData.length / 2}`;
-    }
+    function startGame() {
+      clearInterval(timerInterval);
+      const level = document.getElementById("level").value;
+      let numPairs, timeLimit;
 
-    function createBoard() {
-      const board = document.getElementById("gameBoard");
-      board.innerHTML = "";
+      if (level === "1") {
+        numPairs = 5;
+        timeLimit = 45;
+      } else if (level === "2") {
+        numPairs = 10;
+        timeLimit = 60;
+      } else {
+        numPairs = 15;
+        timeLimit = 60;
+      }
 
-      shuffle(allPairs);
-      selectedPairs = allPairs.slice(0, 10);
-
+      matchedPairs = 0;
+      document.getElementById("score").textContent = `맞춘 카드: 0 / ${numPairs}`;
       cardData = [];
-      selectedPairs.forEach((pair, index) => {
+      const selectedPairs = [...allPairs];
+      shuffle(selectedPairs);
+      const chosenPairs = selectedPairs.slice(0, numPairs);
+
+      chosenPairs.forEach((pair, index) => {
         const pairId = index + 1;
         cardData.push(
           { type: "word", content: pair.word, pairId },
@@ -118,7 +160,16 @@
       });
 
       shuffle(cardData);
+      createBoard();
       startTime = Date.now();
+      startTimer(timeLimit);
+    }
+
+    function createBoard() {
+      const board = document.getElementById("gameBoard");
+      board.innerHTML = "";
+      firstCard = null;
+      lockBoard = false;
 
       cardData.forEach((data, index) => {
         const card = document.createElement("div");
@@ -126,14 +177,30 @@
         card.dataset.index = index;
         card.dataset.pairId = data.pairId;
 
+        const cardInner = document.createElement("div");
+        cardInner.classList.add("card-inner");
+
+        const cardFront = document.createElement("div");
+        cardFront.classList.add("card-front");
         if (data.type === "word") {
-          card.textContent = data.content;
-        } else if (data.type === "image") {
+          cardFront.textContent = data.content;
+        } else {
           const img = document.createElement("img");
           img.src = data.content;
           img.alt = "";
-          card.appendChild(img);
+          cardFront.appendChild(img);
         }
+
+        const cardBack = document.createElement("div");
+        cardBack.classList.add("card-back");
+        const backImg = document.createElement("img");
+        backImg.src = "images/back_image.jpg";
+        backImg.alt = "Back";
+        cardBack.appendChild(backImg);
+
+        cardInner.appendChild(cardFront);
+        cardInner.appendChild(cardBack);
+        card.appendChild(cardInner);
 
         card.addEventListener("click", () => handleCardClick(card));
         board.appendChild(card);
@@ -158,9 +225,10 @@
         updateScore();
 
         if (matchedPairs === cardData.length / 2) {
+          clearInterval(timerInterval);
           const totalTime = Math.floor((Date.now() - startTime) / 1000);
           setTimeout(() => {
-            alert(`성공! 걸린 시간은 ${totalTime}초! 멋진걸`);
+            alert(`Good job! ${totalTime}초 걸렸어! 멋진걸!`);
           }, 300);
         }
       } else {
@@ -174,8 +242,26 @@
       }
     }
 
-    createBoard();
-    updateScore();
+    function updateScore() {
+      document.getElementById("score").textContent = `맞춘 카드: ${matchedPairs} / ${cardData.length / 2}`;
+    }
+
+    function startTimer(seconds) {
+      remainingTime = seconds;
+      document.getElementById("timer").textContent = `남은 시간: ${remainingTime}초`;
+
+      timerInterval = setInterval(() => {
+        remainingTime--;
+        document.getElementById("timer").textContent = `남은 시간: ${remainingTime}초`;
+
+        if (remainingTime <= 0) {
+          clearInterval(timerInterval);
+          document.querySelectorAll(".card").forEach(c => c.style.pointerEvents = "none");
+          const totalTime = Math.floor((Date.now() - startTime) / 1000);
+          alert(`Good job! ${totalTime}초 걸렸어! 멋진걸!`);
+        }
+      }, 1000);
+    }
   </script>
 </body>
 </html>
