@@ -1,26 +1,26 @@
-﻿"word,image"
-"emperor,images/emperor.png"
-"inch,images/inch.gif"
-"antarctica,images/antarctica.jpg"
-"south pole,images/southpole.jpg"
-"temperature,images/temperature.jpg"
-"below,images/below.jpg"
-"fat,images/fat.jpg"
-"lay an egg,images/layanegg.jpg"
-"whole,images/whole.jpg"
-"fierce,images/fierce.jpg"
-"huddle,images/huddle.jpg"
-"howl,images/howl.png"
-"protect,images/protect.jpg"
-"hunt,images/hunt.jpg"
-"freeze,images/freeze.jpg"
-"take turns,images/taketurns.jpg"
-"remember,images/remember.jpg"
-"hatch,images/hatch.png"
-"chick,images/chick.jpg"
-"break,images/break.jpg"
-"fuzzy,images/fuzzy.jpg"
-"feather,images/feather.jpg"
-"cozy,images/cozy.jpg"
-"slide,images/slide.jpg"
-"newborn,images/newborn.png"
+﻿word,image
+freeze,images/freeze.jpg
+take turns,images/taketurns.jpg
+remember,images/remember.jpg
+hatch,images/hatch.png
+chick,images/chick.jpg
+break,images/break.jpg
+fuzzy,images/fuzzy.jpg
+feather,images/feather.jpg
+cozy,images/cozy.jpg
+slide,images/slide.jpg
+newborn,images/newborn.png
+emperor,images/emperor.png
+inch,images/inch.gif
+antarctica,images/antarctica.jpg
+south pole,images/southpole.jpg
+temperature,images/temperature.jpg
+below,images/below.jpg
+fat,images/fat.jpg
+lay an egg,images/layanegg.jpg
+whole,images/whole.jpg
+fierce,images/fierce.jpg
+huddle,images/huddle.jpg
+howl,images/howl.png
+protect,images/protect.jpg
+hunt,images/hunt.jpg
