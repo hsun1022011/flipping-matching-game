@@ -10,19 +10,20 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 0;
       padding: 20px;
     }
     h1 {
       margin-bottom: 10px;
     }
-    .score {
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .score, .timer {
       font-size: 18px;
       margin-bottom: 10px;
-    }
-    #timer {
-      font-size: 18px;
-      margin-bottom: 20px;
     }
     .game-board {
       display: grid;
@@ -35,16 +36,13 @@
       perspective: 1000px;
     }
     .card-inner {
-      position: relative;
       width: 100%;
       aspect-ratio: 1 / 1;
-      transition: transform 0.6s;
+      position: relative;
       transform-style: preserve-3d;
+      transition: transform 0.6s;
     }
-    .card.hidden .card-inner {
-      transform: rotateY(0deg);
-    }
-    .card:not(.hidden) .card-inner {
+    .card.flipped .card-inner {
       transform: rotateY(180deg);
     }
     .card-front, .card-back {
@@ -53,73 +51,63 @@
       height: 100%;
       backface-visibility: hidden;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       border: 2px solid #ccc;
-      background-color: #f0f0f0;
       box-sizing: border-box;
       font-size: 16px;
       padding: 10px;
-      text-align: center;
-    }
-    .card-front {
-      transform: rotateY(180deg);
+      background-color: #fff;
     }
     .card-back {
       background-color: #ddd;
     }
-    .card.matched {
-      pointer-events: none;
+    .card-front {
+      transform: rotateY(180deg);
+    }
+    .card.matched .card-inner {
+      cursor: default;
+      background-color: #a3d9a5;
     }
     img {
       max-width: 100%;
       max-height: 100%;
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
   <h1>Matching Card Game</h1>
-
-  <div style="margin-bottom: 10px;">
-    <label for="level">레벨 선택:</label>
-    <select id="level">
-      <option value="1">Level 1 (5단어, 45초)</option>
-      <option value="2" selected>Level 2 (10단어, 60초)</option>
-      <option value="3">Level 3 (15단어, 60초)</option>
-    </select>
-    <button onclick="startGame()">게임 시작</button>
+  <div class="controls">
+    <label>Unit:
+      <select id="unitSelect">
+        <option value="word_list_unit1.csv">Unit 1</option>
+        <option value="word_list_unit2.csv">Unit 2</option>
+        <option value="word_list_unit1+2.csv">Unit 1 + 2</option>
+      </select>
+    </label>
+    <label>Level:
+      <select id="levelSelect">
+        <option value="1">Level 1 (5쌍, 45초)</option>
+        <option value="2" selected>Level 2 (10쌍, 60초)</option>
+        <option value="3">Level 3 (15쌍, 60초)</option>
+      </select>
+    </label>
   </div>
 
-  <div class="score" id="score">맞춘 카드: 0 / 0</div>
-  <div id="timer">남은 시간: --초</div>
+  <div class="score" id="score">맞춘 카드: 0</div>
+  <div class="timer" id="timer">남은 시간: 0초</div>
   <div class="game-board" id="gameBoard"></div>
 
   <script>
-    const allPairs = [
-      { word: "new born", image: "images/newborn.png" },
-      { word: "feather", image: "images/feather.jpg" },
-      { word: "fuzzy", image: "images/fuzzy.jpg" },
-      { word: "cozy", image: "images/cozy.jpg" },
-      { word: "slide", image: "images/slide.jpg" },
-      { word: "freeze", image: "images/freeze.jpg" },
-      { word: "take turns", image: "images/taketurns.jpg" },
-      { word: "remember", image: "images/remember.jpg" },
-      { word: "hatch", image: "images/hatch.png" },
-      { word: "chick", image: "images/chick.jpg" },
-      { word: "break", image: "images/break.jpg" },
-      { word: "fierce", image: "images/fierce.jpg" },
-      { word: "huddle", image: "images/huddle.jpg" },
-      { word: "howl", image: "images/howl.jpg" },
-      { word: "temperature", image: "images/temperature.jpg" }
-    ];
-
+    let allPairs = [];
     let cardData = [];
-    let matchedPairs = 0;
     let firstCard = null;
     let lockBoard = false;
-    let timerInterval = null;
+    let matchedPairs = 0;
     let startTime = null;
-    let remainingTime = 60;
+    let timerInterval = null;
+    let timeLimit = 60;
 
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
@@ -128,96 +116,41 @@
       }
     }
 
-    function startGame() {
-      clearInterval(timerInterval);
-      const level = document.getElementById("level").value;
-      let numPairs, timeLimit;
-
-      if (level === "1") {
-        numPairs = 5;
-        timeLimit = 45;
-      } else if (level === "2") {
-        numPairs = 10;
-        timeLimit = 60;
-      } else {
-        numPairs = 15;
-        timeLimit = 60;
-      }
-
-      matchedPairs = 0;
-      document.getElementById("score").textContent = `맞춘 카드: 0 / ${numPairs}`;
-      cardData = [];
-      const selectedPairs = [...allPairs];
-      shuffle(selectedPairs);
-      const chosenPairs = selectedPairs.slice(0, numPairs);
-
-      chosenPairs.forEach((pair, index) => {
-        const pairId = index + 1;
-        cardData.push(
-          { type: "word", content: pair.word, pairId },
-          { type: "image", content: pair.image, pairId }
-        );
-      });
-
-      shuffle(cardData);
-      createBoard();
-      startTime = Date.now();
-      startTimer(timeLimit);
+    function updateScore() {
+      document.getElementById("score").textContent = `맞춘 카드: ${matchedPairs} / ${cardData.length / 2}`;
     }
 
-    function createBoard() {
-      const board = document.getElementById("gameBoard");
-      board.innerHTML = "";
-      firstCard = null;
-      lockBoard = false;
+    function updateTimerDisplay(secondsLeft) {
+      document.getElementById("timer").textContent = `남은 시간: ${secondsLeft}초`;
+    }
 
-      cardData.forEach((data, index) => {
-        const card = document.createElement("div");
-        card.classList.add("card", "hidden");
-        card.dataset.index = index;
-        card.dataset.pairId = data.pairId;
-
-        const cardInner = document.createElement("div");
-        cardInner.classList.add("card-inner");
-
-        const cardFront = document.createElement("div");
-        cardFront.classList.add("card-front");
-        if (data.type === "word") {
-          cardFront.textContent = data.content;
-        } else {
-          const img = document.createElement("img");
-          img.src = data.content;
-          img.alt = "";
-          cardFront.appendChild(img);
+    function startTimer() {
+      let secondsLeft = timeLimit;
+      updateTimerDisplay(secondsLeft);
+      timerInterval = setInterval(() => {
+        secondsLeft--;
+        updateTimerDisplay(secondsLeft);
+        if (secondsLeft <= 0) {
+          clearInterval(timerInterval);
+          alert(`Good job! ${timeLimit}초 걸렸어! 멋진걸!`);
         }
-
-        const cardBack = document.createElement("div");
-        cardBack.classList.add("card-back");
-        const backImg = document.createElement("img");
-        backImg.src = "images/back_image.jpg";
-        backImg.alt = "Back";
-        cardBack.appendChild(backImg);
-
-        cardInner.appendChild(cardFront);
-        cardInner.appendChild(cardBack);
-        card.appendChild(cardInner);
-
-        card.addEventListener("click", () => handleCardClick(card));
-        board.appendChild(card);
-      });
+      }, 1000);
     }
 
     function handleCardClick(card) {
-      if (lockBoard || card.classList.contains("matched") || !card.classList.contains("hidden")) return;
+      if (lockBoard || card.classList.contains("matched") || card.classList.contains("flipped")) return;
 
-      card.classList.remove("hidden");
+      card.classList.add("flipped");
 
       if (!firstCard) {
         firstCard = card;
         return;
       }
 
-      if (firstCard.dataset.pairId === card.dataset.pairId) {
+      const pairId1 = firstCard.dataset.pairId;
+      const pairId2 = card.dataset.pairId;
+
+      if (pairId1 === pairId2) {
         firstCard.classList.add("matched");
         card.classList.add("matched");
         firstCard = null;
@@ -226,7 +159,7 @@
 
         if (matchedPairs === cardData.length / 2) {
           clearInterval(timerInterval);
-          const totalTime = Math.floor((Date.now() - startTime) / 1000);
+          const totalTime = timeLimit - parseInt(document.getElementById("timer").textContent.match(/\d+/));
           setTimeout(() => {
             alert(`Good job! ${totalTime}초 걸렸어! 멋진걸!`);
           }, 300);
@@ -234,34 +167,99 @@
       } else {
         lockBoard = true;
         setTimeout(() => {
-          card.classList.add("hidden");
-          firstCard.classList.add("hidden");
+          card.classList.remove("flipped");
+          firstCard.classList.remove("flipped");
           firstCard = null;
           lockBoard = false;
         }, 1000);
       }
     }
 
-    function updateScore() {
-      document.getElementById("score").textContent = `맞춘 카드: ${matchedPairs} / ${cardData.length / 2}`;
-    }
+    function createBoard(level) {
+      const board = document.getElementById("gameBoard");
+      board.innerHTML = "";
+      matchedPairs = 0;
+      updateScore();
 
-    function startTimer(seconds) {
-      remainingTime = seconds;
-      document.getElementById("timer").textContent = `남은 시간: ${remainingTime}초`;
+      const numPairs = level === 1 ? 5 : level === 2 ? 10 : 15;
+      shuffle(allPairs);
+      const selectedPairs = allPairs.slice(0, numPairs);
 
-      timerInterval = setInterval(() => {
-        remainingTime--;
-        document.getElementById("timer").textContent = `남은 시간: ${remainingTime}초`;
+      cardData = [];
+      selectedPairs.forEach((pair, index) => {
+        const pairId = index + 1;
+        cardData.push(
+          { type: "word", content: pair.word, pairId },
+          { type: "image", content: pair.image, pairId }
+        );
+      });
 
-        if (remainingTime <= 0) {
-          clearInterval(timerInterval);
-          document.querySelectorAll(".card").forEach(c => c.style.pointerEvents = "none");
-          const totalTime = Math.floor((Date.now() - startTime) / 1000);
-          alert(`Good job! ${totalTime}초 걸렸어! 멋진걸!`);
+      shuffle(cardData);
+
+      cardData.forEach((data, index) => {
+        const card = document.createElement("div");
+        card.classList.add("card");
+        card.dataset.index = index;
+        card.dataset.pairId = data.pairId;
+
+        const inner = document.createElement("div");
+        inner.classList.add("card-inner");
+
+        const front = document.createElement("div");
+        front.classList.add("card-front");
+        if (data.type === "word") {
+          front.textContent = data.content;
+        } else {
+          const img = document.createElement("img");
+          img.src = data.content;
+          front.appendChild(img);
         }
-      }, 1000);
+
+        const back = document.createElement("div");
+        back.classList.add("card-back");
+        const backImg = document.createElement("img");
+        backImg.src = "images/back_image.jpg"; // 카드 뒷면 이미지
+        back.appendChild(backImg);
+
+        inner.appendChild(front);
+        inner.appendChild(back);
+        card.appendChild(inner);
+        card.addEventListener("click", () => handleCardClick(card));
+        board.appendChild(card);
+      });
+
+      startTimer();
     }
+
+    function loadCSVAndStartGame(unitFile, level) {
+      fetch(unitFile)
+        .then(res => res.text())
+        .then(csvText => {
+          const parsed = Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true
+          });
+          allPairs = parsed.data.map(row => ({
+            word: row.word,
+            image: row.image
+          }));
+          clearInterval(timerInterval);
+          timeLimit = level === 1 ? 45 : 60;
+          createBoard(level);
+        });
+    }
+
+    document.getElementById("levelSelect").addEventListener("change", startGame);
+    document.getElementById("unitSelect").addEventListener("change", startGame);
+
+    function startGame() {
+      const level = parseInt(document.getElementById("levelSelect").value);
+      const unitFile = document.getElementById("unitSelect").value;
+      loadCSVAndStartGame(unitFile, level);
+    }
+
+    // 첫 시작
+    startGame();
   </script>
 </body>
 </html>
