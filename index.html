@@ -128,7 +128,6 @@
   <div class="game-board" id="gameBoard"></div>
 
   <script>
-    let allPairs = [];
     let cardData = [];
     let matchedPairs = 0;
     let firstCard = null;
@@ -228,12 +227,18 @@
         return;
       }
 
-      if (firstCard.dataset.pairId === card.dataset.pairId) {
+      const isMatch = firstCard.dataset.pairId === card.dataset.pairId;
+
+      if (isMatch) {
         firstCard.classList.add("matched");
         card.classList.add("matched");
-        firstCard = null;
+        // flipped 클래스를 명시적으로 다시 붙여줌
+        firstCard.classList.add("flipped");
+        card.classList.add("flipped");
+
         matchedPairs++;
         updateScore();
+        firstCard = null;
 
         if (matchedPairs === cardData.length / 2) {
           clearInterval(timer);
